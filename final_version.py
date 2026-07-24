@@ -2,6 +2,45 @@ import yfinance as yf
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# ==============================================================================
+import tkinter as tk
+from PIL import Image, ImageTk, ImageSequence
+
+
+def show_loading_cat(gif_path="trading_cat.gif", duration_sec=2.5):
+    """Створює та показує вікно з котиком на задану кількість секунд"""
+    try:
+        pil_image = Image.open(gif_path)
+    except FileNotFoundError:
+        print(f"❌ Помилка: Файл '{gif_path}' не знайдено!")
+        return
+
+    root = tk.Tk()
+    root.title("Tradingbot: Рахуємо гроші...")
+    root.attributes('-topmost', True)
+
+    frames = [ImageTk.PhotoImage(frame.copy().convert('RGBA')) for frame in ImageSequence.Iterator(pil_image)]
+    if not frames:
+        root.destroy()
+        return
+
+    label = tk.Label(root)
+    label.pack()
+
+    delay = pil_image.info.get('duration', 50)
+
+    def update(ind):
+        if not root.winfo_exists():
+            return
+        label.configure(image=frames[ind])
+        next_ind = (ind + 1) % len(frames)
+        root.after(delay, update, next_ind)
+
+    # Автоматичне закриття вікна через duration_sec секунд
+    root.after(int(duration_sec * 1000), root.destroy)
+    root.after(0, update, 0)
+    root.mainloop()
+
 pm_ticker = yf.Ticker("PM")
 
 # Беремо початкову дату і віднімаємо 75 днів
@@ -10,9 +49,9 @@ start_date_str = start_dt.strftime("%Y-%m-%d")
 
 # Завантажуємо дані з запасом
 pm_data = pm_ticker.history(start=start_date_str, end="2024-01-01")
-# Робимо дату звичайним стовпчиком
+# Робимо дату звичайним стовпчиком відрізаємо часовй пояс для точності обрахунків
 pm_data = pm_data.reset_index()
-
+pm_data['Date'] = pm_data['Date'].dt.tz_localize(None)
 # Записуємо у файл
 pm_data.to_csv("philip_morris_pm_data.csv", index=False)
 
@@ -46,15 +85,16 @@ cross_MA = pm_data[pm_data["Position"] != 0]
 
 pm_data.to_csv("philip_morris_pm_data.csv", index=False)
 
-print(cross_MA[["Date", "Position", "Indicator_Type"]])
 
 # фунція купівлі-продажу
-def simulate_trading(data):
+def simulate_trading(cross_MA):
     money = float(input("Введіть суму інвестиції ($): "))
+    print("\n🟢 Починаємо розрахунки, поки котик торгує...")
     cash = money
     shares = 0
     trades = []
 
+    show_loading_cat("trading_cat.gif", duration_sec=3.5)
     for index, row in cross_MA.iterrows():
         price = row["Close"]
         date = row["Date"]
@@ -97,17 +137,16 @@ def simulate_trading(data):
         })
 
     trades_df = pd.DataFrame(trades)
-
-    print("\nІсторія угод")
+    print("\n🏁 Розрахунки завершено! Історія угод:")
+    print(" "*59)
     print(trades_df)
-
+    print(" "*59)
     print(f"Початкова сума: {money}")
     print(f"Кінцева сума: {round(cash, 2)}")
     print(f"Прибуток: {round(cash - money, 2)}")
-
+    print(" " * 59)
     return trades_df
-
-print(simulate_trading(pm_data))
+trades_results = simulate_trading(cross_MA)
 
 plt.figure(figsize=(14, 7))
 # Ціна закриття
@@ -141,4 +180,12 @@ plt.grid(True)
 plt.legend()
 
 plt.tight_layout()
+
+import matplotlib.dates as mdates
+
+# Вказуємо формат: Рік-Місяць-День (%Y-%m-%d)
+plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+
+# Повертаємо підписи під кутом, щоб вони не налізали один на одного
+plt.gcf().autofmt_xdate()
 plt.show()
