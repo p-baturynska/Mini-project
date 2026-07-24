@@ -152,8 +152,8 @@ plt.figure(figsize=(14, 7))
 # Ціна закриття
 plt.plot(pm_data["Date"], pm_data["Close"], label="Close Price", color="black")
 # Ковзні середні
-plt.plot(pm_data["Date"], pm_data["fast MA"],label="Fast MA (20)", color="blue")
-plt.plot(pm_data["Date"], pm_data["slow MA"],label="Slow MA (50)", color="orange")
+plt.plot(pm_data["Date"], pm_data["fast MA"],label="Fast MA (20)", color="#b30b5f")
+plt.plot(pm_data["Date"], pm_data["slow MA"],label="Slow MA (50)", color="#1234567888e3")
 buy = pm_data[pm_data["Position"] == 1]
 plt.scatter(
     buy["Date"],
