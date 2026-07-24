@@ -15,28 +15,95 @@ except Exception as e:
 
 data.to_csv("philis_morris_stock.csv")
 
+# фунція купівлі-продажу
+def simulate_trading(data):
+    money = float(input("Введіть суму інвестиції ($): "))
+    cash = money
+    shares = 0
+    trades = []
 
-# складно зробити без того що зробила полінка
-money = float(input("Enter your money to invest: "))
-def sell_buy(money):
-    # for points in crosses:
-        # buy_price = ??? перетин отих ковзанок
-        # shares = money / buy_price
-        # sell_price = ??? інший перетин
-        # profit = shares * sell_price - money
-#         зробити табличку виводу коли купувати/продавати
+    for row in data.iterrows():
+        signal = row["Indicator_Type"]
+        price = row["Close"]
+        date = row["Date"]
+        if signal == "Golden Cross (BUY)" and cash > 0:
+            shares = cash // price
+            cash = 0
+            trades.append({
+                "Date": date,
+                "Action": "BUY",
+                "Price": round(price, 2),
+                "Shares": round(shares, 4),
+                "Cash": round(cash, 2)
+            })
+        elif signal == "Death Cross (SELL)" and shares > 0:
+            cash = shares * price
+            profit = cash - money
+            trades.append({
+                "Date": date,
+                "Action": "SELL",
+                "Price": round(price, 2),
+                "Shares": round(shares, 4),
+                "Cash": round(cash, 2),
+                "Profit": round(profit, 2)
+            })
+            shares = 0
+    if shares > 0:
+        last_price = data.iloc[-1]["Close"]
+        last_date = data.iloc[-1]["Date"]
+        cash = shares * last_price
+        profit = cash - money
+        trades.append({
+            "Date": last_date,
+            "Action": "SELL (End)",
+            "Price": round(last_price, 2),
+            "Shares": round(shares, 4),
+            "Cash": round(cash, 2),
+            "Profit": round(profit, 2)
+        })
+
+    trades_df = pd.DataFrame(trades)
+
+    print("\nІсторія угод")
+    print(trades_df)
+
+    print(f"Купівля: {buy_price:.2f}$")
+    print(f"Продаж: {sell_price:.2f}$")
+    print(f"Прибуток: {profit:.2f}$")
+
+    return trades_df
 
 
-print(f"Купівля: {buy_price:.2f}$")
-print(f"Продаж: {sell_price:.2f}$")
-print(f"Прибуток: {profit:.2f}$")
-# графік
-# додати точки продажу\купівлі,
-# додати 2 лінії якоїсь чортівні на основі коду іншої людини
-plt.figure(figsize=(10,5))
-plt.plot(data.index, data["Close"])
-plt.title("PMI Stock Price")
+plt.figure(figsize=(14, 7))
+# Ціна закриття
+plt.plot(pm_data["Date"], pm_data["Close"], label="Close Price", color="black")
+# Ковзні середні
+plt.plot(pm_data["Date"], pm_data["fast MA"],label="Fast MA (20)", color="blue")
+plt.plot(pm_data["Date"], pm_data["slow MA"],label="Slow MA (50)", color="orange")
+buy = pm_data[pm_data["Position"] == 1]
+plt.scatter(
+    buy["Date"],
+    buy["Close"],
+    color="green",
+    marker="^",
+    s=120,
+    label="BUY"
+)
+# Точки продажу
+sell = pm_data[pm_data["Position"] == -1]
+plt.scatter(
+    sell["Date"],
+    sell["Close"],
+    color="red",
+    marker="v",
+    s=120,
+    label="SELL"
+)
+plt.title("Philip Morris (PM) Trading Signals")
 plt.xlabel("Date")
 plt.ylabel("Price ($)")
 plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
 plt.show()
